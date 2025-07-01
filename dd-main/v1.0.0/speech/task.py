@@ -62,13 +62,13 @@ def get_speechGroupId(tenant, speechName=""):
         json_path_data_taskSpeechName = "$.data.list[0].speechName"
         taskSpeechGroupId = jsonPathParse(data_taskSpeech, json_path_data_taskSpeechGroupId)
         taskSpeechName = jsonPathParse(data_taskSpeech, json_path_data_taskSpeechName)
-        print(f"为空时话术id:{taskSpeechGroupId}, 话术名称：{taskSpeechName}")
+        # print(f"为空时话术id:{taskSpeechGroupId}, 话术名称：{taskSpeechName}")
         return taskSpeechGroupId, taskSpeechName
     else:
         json_path_data_taskSpeechGroupId ="".join("$.data.list[?(@.speechName == '{}')].groupId".format(speechName))
         taskSpeechGroupId = jsonPathParse(data_taskSpeech, json_path_data_taskSpeechGroupId)
         taskSpeechName = speechName
-        print(f"不为空时话术id:{taskSpeechGroupId[0]}, 话术名称：{taskSpeechName}")
+        # print(f"不为空时话术id:{taskSpeechGroupId[0]}, 话术名称：{taskSpeechName}")
         return taskSpeechGroupId[0], taskSpeechName
     
 taskSpeechGroupId, taskSpeechName = get_speechGroupId(tenant, speechName)

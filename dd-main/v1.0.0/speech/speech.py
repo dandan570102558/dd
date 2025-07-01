@@ -25,44 +25,37 @@ except Exception as e:
     exit(1)
 
 #-------------------------------获取行业信息：biz2_id、biz_scene
+def get_biz(data, biz_name):
+    def find_biz_id(data, biz_name):
+        for item in data:
+            if item.get('name') == biz_name:
+                return item.get('id')
+            if 'children' in item:
+                result = find_biz_id(item['children'], biz_name)
+                if result:
+                    return result
+        return None
+    return find_biz_id(data, biz_name)
+
 body_bizTree = {"includeScene": True, "bffAction": "css.call.bizTree.list"}
 data_biz = getResponseBody(body_bizTree)
 
-biz2_id = None
-biz_scene = None
+biz2_id = get_biz(data_biz['data'], bizName_2)
+biz_scene = get_biz(data_biz['data'], bizName_3)
 
-def find_biz_id(data, biz_name):
-    for item in data:
-        if item.get('name') == biz_name:
-            return item.get('id')
-        if 'children' in item:
-            result = find_biz_id(item['children'], biz_name)
-            if result:
-                return result
-    return None
-biz2_id = find_biz_id(data_biz['data'], bizName_2)
-biz_scene = find_biz_id(data_biz['data'], bizName_3)
-if not biz2_id:
-    print(f"Business ID for '{bizName_2}' not found.")
-    exit(1)
-if not biz_scene:
-    print(f"Business ID for '{bizName_3}' not found.")
-    exit(1)
 #-------------------------------获取行业信息：biz2_id、biz_scene
 
 #-------------------------------获取意图集合：intentionCollectionIds
-body_intentionList = {"bizId": biz2_id, "bffAction": "css.call.new.intention.kcList"}
-data_intentionList = getResponseBody(body_intentionList)
-
-intentionCollectionIds = []
-
 def find_intention_collection_id(data, intentionList_name):
     for item in data:
         if item.get('name') == intentionList_name:
             return item.get('guid')
     return None
+
+body_intentionList = {"bizId": biz2_id, "bffAction": "css.call.new.intention.kcList"}
+data_intentionList = getResponseBody(body_intentionList)
+intentionCollectionIds = []
 intentionCollectionIds = find_intention_collection_id(data_intentionList['data'], intentionList_name)
-print(intentionCollectionIds)
 if not intentionCollectionIds:
     print(f"Intention Collection ID for '{intentionList_name}' not found.")
     exit(1)
