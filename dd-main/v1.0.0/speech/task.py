@@ -10,6 +10,7 @@ import openpyxl
 from urllib.parse import unquote, urlparse
 import warnings
 from requests_toolbelt.utils import dump
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 num = ''.join(random.choices('0123456789', k=6))
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,6 +24,7 @@ try:
         intentionList_name = config.get("intentionCollectionName")
         tenant = config.get("tenant")
         tenantLineGroupName = config.get("tenantLineGroupName")
+        speechName = config.get("speechName")
         # filePath = config.get("filePath")
         phone = config.get("phone")
         upload_url = config.get("upload_url")
@@ -43,22 +45,33 @@ tenantLineGroup = jsonPathParse(data_tenantGroupGuid, json_path_tenantLineGroup)
 # print(f"线路组：{tenantLineGroup}")
 
 #------------------------根据租户获取话术列表：taskSpeechGroupId、taskSpeechName
-body_taskSpeechGroupId = {
-    "bffAction": "css.call.speech.listSpeech",
-    "pageSize": 999,
-    "pageNum": 1,
-    "tenant": tenant,
-    "status": 1,
-    "needSpeechVariable": 1
-}
-taskSpeech_result = getResponseBody(body_taskSpeechGroupId)
-data_taskSpeech = json.dumps(taskSpeech_result)
-json_path_data_taskSpeechGroupId = "$.data.list[0].groupId"
-json_path_data_taskSpeechName = "$.data.list[0].speechName"
-taskSpeechGroupId = jsonPathParse(data_taskSpeech, json_path_data_taskSpeechGroupId)
-taskSpeechName = jsonPathParse(data_taskSpeech, json_path_data_taskSpeechName)
-# print(f"话术id:{taskSpeechGroupId}")
-# print(f"话术名称：{taskSpeechName}")
+def get_speechGroupId(tenant, speechName=""):
+    body_taskSpeechGroupId = {
+            "bffAction": "css.call.speech.listSpeech",
+            "pageSize": 999,
+            "pageNum": 1,
+            "tenant": tenant,
+            "status": 1,
+            "needSpeechVariable": 1
+        }
+    taskSpeech_result = getResponseBody(body_taskSpeechGroupId)
+    data_taskSpeech = json.dumps(taskSpeech_result)
+    """如果没有给话术名称，则默认拿列表返回的第一个话术"""
+    if not speechName:
+        json_path_data_taskSpeechGroupId = "$.data.list[0].groupId"
+        json_path_data_taskSpeechName = "$.data.list[0].speechName"
+        taskSpeechGroupId = jsonPathParse(data_taskSpeech, json_path_data_taskSpeechGroupId)
+        taskSpeechName = jsonPathParse(data_taskSpeech, json_path_data_taskSpeechName)
+        print(f"为空时话术id:{taskSpeechGroupId}, 话术名称：{taskSpeechName}")
+        return taskSpeechGroupId, taskSpeechName
+    else:
+        json_path_data_taskSpeechGroupId ="".join("$.data.list[?(@.speechName == '{}')].groupId".format(speechName))
+        taskSpeechGroupId = jsonPathParse(data_taskSpeech, json_path_data_taskSpeechGroupId)
+        taskSpeechName = speechName
+        print(f"不为空时话术id:{taskSpeechGroupId[0]}, 话术名称：{taskSpeechName}")
+        return taskSpeechGroupId[0], taskSpeechName
+    
+taskSpeechGroupId, taskSpeechName = get_speechGroupId(tenant, speechName)
 
 #------------------------创建任务:获取taskId
 body_createTask = {
@@ -135,38 +148,41 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 filePath = os.path.join(script_dir, "modified.xlsx")
 download_file(ossUrl, filePath)
 #------------------------名单上传
-def upload_file_func(upload_url, task_guid, upload_type=0):
+def upload_file_func(up_url, token, task_guid):
     try:
+        multipart_data = MultipartEncoder(
+            fields={
+                "bffAction": "task.uploadDataFile",
+                "taskGuid": str(task_guid),  
+                "fileName": "modified.xlsx",
+                "uploadType": "0",  
+                "file": (
+                    "modified.xlsx",  
+                    open(filePath, 'rb'),
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+            },
+            boundary="----WebKitFormBoundaryIXmRyDI6AJAmUKAM" 
+        )
+
         headers = {
-            "Token":Token,
-             "Content-Type": "multipart/form-data"
+            "Token": token,
+            "Content-Type": multipart_data.content_type 
         }
-        url = upload_url
-        params = {
-            "bffAction":"task.uploadDataFile",
-            "taskGuid":task_guid,
-            "fileName":"modified.xlsx",
-            "uploadType":upload_type
-        }
-        with open(filePath, 'rb') as f:
-            files = {
-                'file': ('modified.xlsx', f, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            }
-            response = requests.post(
-                url,
-                params = params,
-                headers = headers,
-                files = files,
-                timeout = 30
-            )
-            data = dump.dump_all(response)
-            print("\n=== 原始请求/响应数据 ===")
-            print(data.decode('utf-8', errors='replace'))
-            response.raise_for_status()
-            print(f"✅ 文件上传成功！响应: {response.text}")
-            return response.json()
+        
+        response = requests.post(
+            up_url,
+            data=multipart_data,  
+            headers=headers
+        )
+        
+        response.raise_for_status()
+        print(f"✅ 文件上传成功！响应: {response.text}")
+        return response.json()
+        
     except Exception as e:
         print(f"❌ 上传失败: {str(e)}")
+        if hasattr(e, 'response') and e.response:
+            print(f"错误详情: {e.response.text}")
         return None
-
-upload_file_func(upload_url, taskId)
+upload_file_func(upload_url, Token, taskId)

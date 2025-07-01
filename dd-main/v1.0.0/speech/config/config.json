@@ -6,6 +6,8 @@
   "bizName_3": "顺风车",
   "intentionCollectionName": "打车投诉",
   "tenantLineGroupName": "中弘2.0线路",
-  "phone":"132324234",
+  "//":"speechName可以为空，若为空则创建任务时默认拿第一个",
+  "speechName":"HMY配置为挂机语料",
+  "phone":"17720499162",
   "upload_url":"https://fat-bff-admin.hellobike.cn/general/fileUploadLogin"
 }
