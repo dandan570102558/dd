@@ -1,0 +1,9 @@
+{
+  "fat_base_url": "https://fat-bff-admin.hellobike.cn/general/bffGeneralReqLogin",
+  "Token": "bearer_ad3a62c7-c6db-46e7-84b5-a79bffac2611",
+  "tenant": "11126",
+  "bizName_2": "打车",
+  "bizName_3": "顺风车",
+  "intentionCollectionName": "打车投诉",
+  "tenantLineGroupName": "中弘2.0线路"
+}
